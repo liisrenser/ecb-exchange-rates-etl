@@ -1,3 +1,3 @@
 # ecb-exchange-rates-etl
 
-test test
+zip reading from website: https://www.youtube.com/watch?v=z0gguhEmWiY
