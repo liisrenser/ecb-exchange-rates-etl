@@ -8,11 +8,11 @@ r_history = requests.get('https://www.ecb.europa.eu/stats/eurofxref/eurofxref-hi
 
 
 def extract_history():
-    with open('data.zip2', 'wb') as f1:
+    with open('data.zip1', 'wb') as f1:
         f1.write(r_history.content)
 
     rows = []
-    with zipfile.ZipFile('data.zip2', 'r') as data_zip:
+    with zipfile.ZipFile('data.zip1', 'r') as data_zip:
         csv_name = data_zip.namelist()[0]
         with data_zip.open(csv_name) as data:
             for row in data:
@@ -69,3 +69,34 @@ def calculate_historical_mean_rates():
 
     print(sums)
     return sums
+
+def get_todays_rate():
+    rows = extract_today()
+
+    header = rows[0].lstrip("\ufeff").split(",")
+    data = rows[1].split(",")
+
+    currencies = [" USD", " SEK", " GBP", " JPY"]
+    rates = {}
+
+    for currency in currencies:
+        index = header.index(currency)
+        rates[currency.strip()] = float(data[index])
+    return rates
+
+def generate_table(today_rates, mean_rates):
+    with open("exchange_rates.md", "w", encoding="utf-8") as f:
+        f.write("| Currency Code |    Rate | Mean Historical Rate |\n")
+        f.write("|---------------|---------|----------------------|\n")
+        
+        for currency in today_rates:
+            rate = today_rates[currency]
+            mean = mean_rates[currency]
+            f.write(
+                f"| {currency:<13} | {rate:>7.3f} | {mean:>20.4f} |\n"
+            )
+
+if __name__ == "__main__":
+    today = get_todays_rate()
+    mean = calculate_historical_mean_rates()
+    generate_table(today, mean)
