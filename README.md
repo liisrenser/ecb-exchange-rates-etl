@@ -38,6 +38,14 @@ git clone https://github.com/liisrenser/ecb-exchange-rates-etl.git
 cd ecb-exchange-rates-etl
 ```
 
+(Optional) Open the project in VS Code
+
+If you want to view and edit the project files in a development environment (such as Visual Studio Code), run the following command:
+
+```bash
+code .
+```
+
 **2. Install required dependency**
 
 Install the required Python package using pip:
