@@ -1,102 +1,105 @@
 import requests
 import zipfile
-import sys
+
+r_today: requests.Response = requests.get('https://www.ecb.europa.eu/stats/eurofxref/eurofxref.zip')
+r_history: requests.Response = requests.get('https://www.ecb.europa.eu/stats/eurofxref/eurofxref-hist.zip')
 
 
-r_today = requests.get('https://www.ecb.europa.eu/stats/eurofxref/eurofxref.zip')
-r_history = requests.get('https://www.ecb.europa.eu/stats/eurofxref/eurofxref-hist.zip')
-
-
-def extract_history():
+def extract_history() -> list[str]:
     with open('data.zip1', 'wb') as f1:
         f1.write(r_history.content)
 
-    rows = []
+    rows: list[str] = []
     with zipfile.ZipFile('data.zip1', 'r') as data_zip:
-        csv_name = data_zip.namelist()[0]
+        csv_name: str = data_zip.namelist()[0]
         with data_zip.open(csv_name) as data:
             for row in data:
                 rows.append(row.decode("utf-8").strip())
     return rows
 
-def extract_today():
+
+def extract_today() -> list[str]:
     with open('data.zip2', 'wb') as f2:
         f2.write(r_today.content)
 
-    rows = []
+    rows: list[str] = []
     with zipfile.ZipFile('data.zip2', 'r') as data_zip:
-        csv_name = data_zip.namelist()[0]
+        csv_name: str = data_zip.namelist()[0]
         with data_zip.open(csv_name) as data:
             for row in data:
                 rows.append(row.decode("utf-8").strip())
     return rows
 
 
-def calculate_historical_mean_rates():
-    header = extract_history()[0]
-    cols = header.strip().split(",")
+def calculate_historical_mean_rates() -> dict[str, float | None]:
+    header: str = extract_history()[0]
+    cols: list[str] = header.strip().split(",")
 
-    currencies = ["USD", "SEK", "GBP", "JPY"]
-    indexes = {}
+    currencies: list[str] = ["USD", "SEK", "GBP", "JPY"]
+    indexes: dict[str, int] = {}
 
     for currency in currencies:
-        index = cols.index(currency)
+        index: int = cols.index(currency)
         indexes[currency] = index
 
-    sums = {"USD": 0.0, "SEK": 0.0, "GBP": 0.0, "JPY": 0.0}
-    counts = {"USD": 0,   "SEK": 0,   "GBP": 0,   "JPY": 0}
+    sums: dict[str, float | None] = {"USD": 0.0, "SEK": 0.0, "GBP": 0.0, "JPY": 0.0}
+    counts: dict[str, int] = {"USD": 0,   "SEK": 0,   "GBP": 0,   "JPY": 0}
 
-    keys = list(indexes.keys())
-    rows = extract_history()[1:]
+    keys: list[str] = list(indexes.keys())
+    rows: list[str] = extract_history()[1:]
 
     for value in indexes.values():
-        currency = keys[list(indexes.values()).index(value)]
+        currency: str = keys[list(indexes.values()).index(value)]
 
         for row in rows:
-            parts = row.strip().split(",")
+            parts: list[str] = row.strip().split(",")
 
             if value >= len(parts) or parts[value] == "":
                 continue
 
-            sums[currency] += float(parts[value])
+            # sums[currency] is always float here, but annotated as float|None overall
+            sums[currency] = float(sums[currency]) + float(parts[value])  # type: ignore[arg-type]
             counts[currency] += 1
 
     for currency in sums:
         if counts[currency] == 0:
             sums[currency] = None
         else:
-            sums[currency] = sums[currency] / counts[currency]
+            sums[currency] = float(sums[currency]) / counts[currency]  # type: ignore[arg-type]
 
     print(sums)
     return sums
 
-def get_todays_rate():
-    rows = extract_today()
 
-    header = rows[0].lstrip("\ufeff").split(",")
-    data = rows[1].split(",")
+def get_todays_rate() -> dict[str, float]:
+    rows: list[str] = extract_today()
 
-    currencies = [" USD", " SEK", " GBP", " JPY"]
-    rates = {}
+    header: list[str] = rows[0].lstrip("\ufeff").split(",")
+    data: list[str] = rows[1].split(",")
+
+    currencies: list[str] = [" USD", " SEK", " GBP", " JPY"]
+    rates: dict[str, float] = {}
 
     for currency in currencies:
-        index = header.index(currency)
+        index: int = header.index(currency)
         rates[currency.strip()] = float(data[index])
     return rates
 
-def generate_table(today_rates, mean_rates):
+
+def generate_table(today_rates: dict[str, float], mean_rates: dict[str, float | None]) -> None:
     with open("exchange_rates.md", "w", encoding="utf-8") as f:
         f.write("| Currency Code |    Rate | Mean Historical Rate |\n")
         f.write("|---------------|---------|----------------------|\n")
-        
+
         for currency in today_rates:
-            rate = today_rates[currency]
-            mean = mean_rates[currency]
+            rate: float = today_rates[currency]
+            mean: float | None = mean_rates[currency]
             f.write(
                 f"| {currency:<13} | {rate:>7.3f} | {mean:>20.4f} |\n"
             )
 
+
 if __name__ == "__main__":
-    today = get_todays_rate()
-    mean = calculate_historical_mean_rates()
+    today: dict[str, float] = get_todays_rate()
+    mean: dict[str, float | None] = calculate_historical_mean_rates()
     generate_table(today, mean)
