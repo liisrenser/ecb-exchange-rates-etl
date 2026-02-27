@@ -57,17 +57,15 @@ def calculate_historical_mean_rates() -> dict[str, float | None]:
             if value >= len(parts) or parts[value] == "":
                 continue
 
-            # sums[currency] is always float here, but annotated as float|None overall
-            sums[currency] = float(sums[currency]) + float(parts[value])  # type: ignore[arg-type]
+            sums[currency] = float(sums[currency]) + float(parts[value])
             counts[currency] += 1
 
     for currency in sums:
         if counts[currency] == 0:
             sums[currency] = None
         else:
-            sums[currency] = float(sums[currency]) / counts[currency]  # type: ignore[arg-type]
+            sums[currency] = float(sums[currency]) / counts[currency]
 
-    print(sums)
     return sums
 
 
